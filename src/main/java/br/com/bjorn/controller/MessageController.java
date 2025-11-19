@@ -33,9 +33,17 @@ public class MessageController {
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public Mono<MessageResponse> sendMessageFormData(@PathVariable Long conversationId, @RequestPart("content") String content) {
+    public Mono<MessageResponse> sendMessageFormData(@PathVariable Long conversationId,
+                                                     @RequestPart(value = "content", required = false) String content,
+                                                     @RequestPart(value = "message", required = false) String message) {
+        String payload = content != null ? content : message;
+
+        if (payload == null || payload.isBlank()) {
+            return Mono.error(new IllegalArgumentException("Request part 'content' or 'message' is required."));
+        }
+
         Conversation conversation = conversationService.getConversation(conversationId);
-        return bjornService.handleUserMessage(conversation, content);
+        return bjornService.handleUserMessage(conversation, payload);
     }
 
     @GetMapping
