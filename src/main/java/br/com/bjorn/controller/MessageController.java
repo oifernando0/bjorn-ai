@@ -1,0 +1,55 @@
+package br.com.bjorn.controller;
+
+import br.com.bjorn.dto.MessageRequest;
+import br.com.bjorn.dto.MessageResponse;
+import br.com.bjorn.entity.Conversation;
+import br.com.bjorn.service.BjornService;
+import br.com.bjorn.service.ConversationService;
+import br.com.bjorn.service.MessageService;
+import jakarta.validation.Valid;
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+@RestController
+@RequestMapping("/api/conversations/{conversationId}/messages")
+public class MessageController {
+
+    private final ConversationService conversationService;
+    private final MessageService messageService;
+    private final BjornService bjornService;
+
+    public MessageController(ConversationService conversationService, MessageService messageService, BjornService bjornService) {
+        this.conversationService = conversationService;
+        this.messageService = messageService;
+        this.bjornService = bjornService;
+    }
+
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
+    public Mono<MessageResponse> sendMessage(@PathVariable Long conversationId, @Valid @RequestBody MessageRequest request) {
+        Conversation conversation = conversationService.getConversation(conversationId);
+        return bjornService.handleUserMessage(conversation, request.getContent());
+    }
+
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Mono<MessageResponse> sendMessageFormData(@PathVariable Long conversationId,
+                                                     @RequestPart(value = "content", required = false) String content,
+                                                     @RequestPart(value = "message", required = false) String message) {
+        String payload = content != null ? content : message;
+
+        if (payload == null || payload.isBlank()) {
+            return Mono.error(new IllegalArgumentException("Request part 'content' or 'message' is required."));
+        }
+
+        Conversation conversation = conversationService.getConversation(conversationId);
+        return bjornService.handleUserMessage(conversation, payload);
+    }
+
+    @GetMapping
+    public Flux<MessageResponse> listMessages(@PathVariable Long conversationId) {
+        Conversation conversation = conversationService.getConversation(conversationId);
+        return messageService.getMessages(conversation)
+                .map(message -> new MessageResponse(message.getId(), message.getRole().name(), message.getContent(), message.getCreatedAt()));
+    }
+}
