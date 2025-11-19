@@ -7,6 +7,7 @@ import br.com.bjorn.service.BjornService;
 import br.com.bjorn.service.ConversationService;
 import br.com.bjorn.service.MessageService;
 import jakarta.validation.Valid;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -25,10 +26,16 @@ public class MessageController {
         this.bjornService = bjornService;
     }
 
-    @PostMapping
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public Mono<MessageResponse> sendMessage(@PathVariable Long conversationId, @Valid @RequestBody MessageRequest request) {
         Conversation conversation = conversationService.getConversation(conversationId);
         return bjornService.handleUserMessage(conversation, request.getContent());
+    }
+
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Mono<MessageResponse> sendMessageFormData(@PathVariable Long conversationId, @RequestPart("content") String content) {
+        Conversation conversation = conversationService.getConversation(conversationId);
+        return bjornService.handleUserMessage(conversation, content);
     }
 
     @GetMapping
