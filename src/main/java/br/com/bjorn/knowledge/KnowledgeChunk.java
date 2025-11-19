@@ -1,0 +1,64 @@
+package br.com.bjorn.knowledge;
+
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "knowledge_chunks")
+public class KnowledgeChunk {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false)
+    private String specialist;
+
+    @Column(nullable = false)
+    private String fileName;
+
+    @Column(nullable = false)
+    private Integer chunkIndex;
+
+    @Column(length = 4000, nullable = false)
+    private String text;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getSpecialist() {
+        return specialist;
+    }
+
+    public void setSpecialist(String specialist) {
+        this.specialist = specialist;
+    }
+
+    public String getFileName() {
+        return fileName;
+    }
+
+    public void setFileName(String fileName) {
+        this.fileName = fileName;
+    }
+
+    public Integer getChunkIndex() {
+        return chunkIndex;
+    }
+
+    public void setChunkIndex(Integer chunkIndex) {
+        this.chunkIndex = chunkIndex;
+    }
+
+    public String getText() {
+        return text;
+    }
+
+    public void setText(String text) {
+        this.text = text;
+    }
+}
