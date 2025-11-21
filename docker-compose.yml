@@ -26,7 +26,8 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      # Allow overriding the host port to avoid conflicts with a local PostgreSQL instance.
+      - "${POSTGRES_PORT:-5433}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U bjorn"]
       interval: 10s
