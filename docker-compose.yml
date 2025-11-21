@@ -9,7 +9,7 @@ services:
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/bjorn
       SPRING_DATASOURCE_USERNAME: bjorn
-      SPRING_DATASOURCE_PASSWORD: bjorn
+      SPRING_DATASOURCE_PASSWORD: bjorn123
       BJORN_STORAGE_DIR: /data/storage
     ports:
       - "8080:8080"

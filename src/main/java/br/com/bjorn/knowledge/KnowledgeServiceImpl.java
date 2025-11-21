@@ -65,7 +65,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     }
 
     private String extractText(MultipartFile file) {
-        try (PDDocument document = Loader.loadPDF(file.getInputStream())) {
+        try (PDDocument document = Loader.loadPDF(file.getBytes())) {
             PDFTextStripper stripper = new PDFTextStripper();
             String rawText = stripper.getText(document);
             return rawText == null ? "" : rawText.replaceAll("\\s+", " ").trim();
