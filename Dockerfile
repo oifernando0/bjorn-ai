@@ -11,7 +11,9 @@ RUN mvn -B -DskipTests package
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 
-RUN useradd -u 1000 spring
+# Create a non-root user without relying on a fixed UID to avoid clashes with
+# base image users (e.g., when UID 1000 is already taken).
+RUN addgroup --system spring && adduser --system --ingroup spring spring
 USER spring
 
 COPY --from=build /app/target/*.jar app.jar
