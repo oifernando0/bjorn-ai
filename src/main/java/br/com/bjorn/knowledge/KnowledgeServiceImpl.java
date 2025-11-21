@@ -1,5 +1,6 @@
 package br.com.bjorn.knowledge;
 
+import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.slf4j.Logger;
@@ -64,7 +65,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     }
 
     private String extractText(MultipartFile file) {
-        try (PDDocument document = PDDocument.load(file.getInputStream())) {
+        try (PDDocument document = Loader.loadPDF(file.getInputStream())) {
             PDFTextStripper stripper = new PDFTextStripper();
             String rawText = stripper.getText(document);
             return rawText == null ? "" : rawText.replaceAll("\\s+", " ").trim();
