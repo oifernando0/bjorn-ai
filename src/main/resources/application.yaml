@@ -1,4 +1,6 @@
 spring:
+  config:
+    import: optional:file:.env[.properties]
   application:
     name: bjorn-ai
   datasource:
@@ -23,3 +25,7 @@ server:
 bjorn:
   storage:
     dir: ${BJORN_STORAGE_DIR:./storage}
+  openai:
+    api-key: ${OPENAI_API_KEY:}
+    base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
+    model: ${OPENAI_MODEL:gpt-4o-mini}

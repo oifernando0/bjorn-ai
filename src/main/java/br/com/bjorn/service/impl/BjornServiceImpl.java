@@ -5,6 +5,7 @@ import br.com.bjorn.entity.Conversation;
 import br.com.bjorn.entity.MessageRole;
 import br.com.bjorn.knowledge.KnowledgeChunk;
 import br.com.bjorn.knowledge.KnowledgeService;
+import br.com.bjorn.service.ChatGptService;
 import br.com.bjorn.service.BjornService;
 import br.com.bjorn.service.MessageService;
 import org.springframework.stereotype.Service;
@@ -15,10 +16,21 @@ public class BjornServiceImpl implements BjornService {
 
     private final MessageService messageService;
     private final KnowledgeService knowledgeService;
+    private final ChatGptService chatGptService;
 
-    public BjornServiceImpl(MessageService messageService, KnowledgeService knowledgeService) {
+    private static final String SYSTEM_PROMPT = """
+            Você é BJORN – Electrical Specialist.
+
+            Responda sempre em português.
+            Use APENAS as informações do contexto fornecido para responder.
+            Se não encontrar referência direta, explique que não encontrou a informação nos materiais disponíveis
+            e então ofereça a melhor orientação possível.
+            """;
+
+    public BjornServiceImpl(MessageService messageService, KnowledgeService knowledgeService, ChatGptService chatGptService) {
         this.messageService = messageService;
         this.knowledgeService = knowledgeService;
+        this.chatGptService = chatGptService;
     }
 
     @Override
@@ -34,22 +46,16 @@ public class BjornServiceImpl implements BjornService {
                 .reduce((a, b) -> a + "\n\n" + b)
                 .orElse("Nenhum contexto relevante encontrado.");
 
-        String prompt = """
-                Você é BJORN – Electrical Specialist.
-
-                Use APENAS as informações abaixo para responder, se possível.
-                Se não encontrar nada relevante, responda com base no seu próprio conhecimento,
-                mas deixe claro que não encontrou referência direta nos PDFs.
-
-                Contexto extraído dos PDFs:
+        String userPrompt = """
+                Contexto extraído dos PDFs ou documentos indexados:
                 %s
 
                 Pergunta do usuário:
                 %s
                 """.formatted(context, content);
 
-        // TODO: integrate LLM call using the prompt above. The current implementation echoes the prompt as the assistant message.
-        return messageService.saveMessage(conversation, MessageRole.ASSISTANT, prompt)
+        return chatGptService.generateAnswer(SYSTEM_PROMPT, userPrompt)
+                .flatMap(answer -> messageService.saveMessage(conversation, MessageRole.ASSISTANT, answer))
                 .map(msg -> new MessageResponse(msg.getId(), msg.getRole().name(), msg.getContent(), msg.getCreatedAt()));
     }
 
