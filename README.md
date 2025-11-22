@@ -7,7 +7,7 @@ Use the paths below with the app running on `http://localhost:8080` (or the port
 
 ### Conversas
 - `POST /api/conversations` – cria uma nova conversa. Corpo JSON: `{ "title": "string", "knowledgeBaseId": 123? }` (o `knowledgeBaseId` é opcional; quando omitido a base padrão é usada).
-- `POST /api/conversations/{conversationId}/messages` – envia mensagem usando JSON `{ "content": "texto" }`.
+- `POST /api/conversations/{conversationId}/messages` – envia mensagem usando JSON `{ "content": "texto" }`. O campo `metadata` é aceito, mas opcional (veja detalhes abaixo).
 - `POST /api/conversations/{conversationId}/messages` (multipart) – alternativa com `content` ou `message` como partes de formulário.
 - `GET /api/conversations/{conversationId}/messages` – lista as mensagens da conversa em ordem cronológica.
 
@@ -35,9 +35,15 @@ Use the paths below with the app running on `http://localhost:8080` (or the port
    - Endpoint: `POST /api/conversations/{conversationId}/messages`
    - Corpo JSON: `{ "content": "Minha pergunta sobre os PDFs" }`.
    - O `conversationId` vem da resposta da etapa 2.
+   - Você pode incluir um objeto `metadata` opcional: `{ "content": "Minha pergunta", "metadata": { "forceKnowledge": true, "specialist": "ELECTRICAL" } }`. No backend atual ele não muda a lógica, mas ajuda a manter a intenção clara do lado do cliente.
 4) **(Opcional) Anexar documentos específicos da conversa**
    - Endpoint: `POST /api/conversations/{conversationId}/documents` (multipart)
    - Use a parte `file` (obrigatória) e, se quiser classificar a fonte, adicione `sourceType` (ex.: `MANUAL`).
+
+### Dicas para o agente ELECTRICAL sempre consultar o material
+- Envie e indexe os PDFs usando `{specialist}=ELECTRICAL` para que sejam considerados nas respostas.
+- Formule as perguntas com palavras-chave presentes nos PDFs (o serviço faz busca por substring, sem tradução automática).
+- Caso nenhuma passagem seja encontrada, o agente responde que não achou referências nos materiais antes de dar uma orientação geral.
 
 No Postman, basta importar a coleção e executar os requests na ordem acima, preenchendo as variáveis `conversationId` e `specialist` após cada passo.
 
