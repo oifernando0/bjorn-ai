@@ -1,0 +1,132 @@
+{
+  "info": {
+    "name": "Bjorn AI API",
+    "description": "Coleção Postman para conversar, enviar mensagens, anexar documentos e subir PDFs para a base de conhecimento.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080", "type": "string" },
+    { "key": "conversationId", "value": "00000000-0000-0000-0000-000000000000", "type": "string" },
+    { "key": "specialist", "value": "GERAL", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Conversas",
+      "item": [
+        {
+          "name": "Criar conversa",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Minha conversa\",\n  \"knowledgeBaseId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/conversations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "conversations"]
+            }
+          }
+        },
+        {
+          "name": "Enviar mensagem (JSON)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Olá, como posso ajudar?\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/conversations/{{conversationId}}/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "conversations", "{{conversationId}}", "messages"]
+            }
+          }
+        },
+        {
+          "name": "Enviar mensagem (multipart)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "content", "value": "Olá via multipart", "type": "text" }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/conversations/{{conversationId}}/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "conversations", "{{conversationId}}", "messages"]
+            }
+          }
+        },
+        {
+          "name": "Listar mensagens",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/conversations/{{conversationId}}/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "conversations", "{{conversationId}}", "messages"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Documentos",
+      "item": [
+        {
+          "name": "Upload de arquivo da conversa",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": [] },
+                { "key": "sourceType", "type": "text", "value": "OUTRO" }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/conversations/{{conversationId}}/documents",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "conversations", "{{conversationId}}", "documents"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Base de conhecimento (PDF)",
+      "item": [
+        {
+          "name": "Upload de PDFs",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "files", "type": "file", "src": [], "disabled": false }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/knowledge/{{specialist}}/docs",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "knowledge", "{{specialist}}", "docs"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

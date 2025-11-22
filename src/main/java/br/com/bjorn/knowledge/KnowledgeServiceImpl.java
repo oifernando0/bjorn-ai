@@ -1,12 +1,15 @@
 package br.com.bjorn.knowledge;
 
+import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.core.io.buffer.DataBufferUtils;
+import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -28,12 +31,12 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     }
 
     @Override
-    public void indexPdf(MultipartFile file, String specialist) {
+    public void indexPdf(FilePart file, String specialist) {
         String normalizedSpecialist = normalizeSpecialist(specialist);
         if (normalizedSpecialist == null || normalizedSpecialist.isBlank()) {
             throw new IllegalArgumentException("Specialist is required");
         }
-        String fileName = file.getOriginalFilename();
+        String fileName = file.filename();
         String text = extractText(file);
         List<String> chunks = chunk(text, DEFAULT_CHUNK_SIZE, DEFAULT_OVERLAP);
 
@@ -63,13 +66,20 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         return matches.subList(0, Math.min(matches.size(), topK));
     }
 
-    private String extractText(MultipartFile file) {
-        try (PDDocument document = PDDocument.load(file.getInputStream())) {
+    private String extractText(FilePart file) {
+        DataBuffer dataBuffer = DataBufferUtils.join(file.content()).block();
+        if (dataBuffer == null) {
+            throw new IllegalArgumentException("Failed to read PDF file: " + file.filename());
+        }
+
+        try (PDDocument document = Loader.loadPDF(dataBuffer.asInputStream())) {
             PDFTextStripper stripper = new PDFTextStripper();
             String rawText = stripper.getText(document);
             return rawText == null ? "" : rawText.replaceAll("\\s+", " ").trim();
         } catch (IOException e) {
-            throw new IllegalArgumentException("Failed to read PDF file: " + file.getOriginalFilename(), e);
+            throw new IllegalArgumentException("Failed to read PDF file: " + file.filename(), e);
+        } finally {
+            DataBufferUtils.release(dataBuffer);
         }
     }
 
