@@ -38,8 +38,12 @@ public class BjornServiceImpl implements BjornService {
 
     @Override
     public Mono<MessageResponse> handleUserMessage(Conversation conversation, String content) {
+        String specialist = resolveSpecialist(conversation);
         return messageService.saveMessage(conversation, MessageRole.USER, content)
-                .then(Mono.fromCallable(() -> knowledgeService.searchRelevantChunks(resolveSpecialist(conversation), content, 5)))
+                .then(Mono.fromCallable(() -> knowledgeService.searchRelevantChunks(specialist, content, 5)))
+                .map(chunks -> chunks.isEmpty() && !DEFAULT_SPECIALIST.equalsIgnoreCase(specialist)
+                        ? knowledgeService.searchRelevantChunks(DEFAULT_SPECIALIST, content, 5)
+                        : chunks)
                 .flatMap(chunks -> generateAssistantResponse(conversation, content, chunks));
     }
 
