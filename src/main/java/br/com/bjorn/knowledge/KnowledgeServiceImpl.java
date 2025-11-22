@@ -1,5 +1,10 @@
 package br.com.bjorn.knowledge;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
@@ -67,7 +72,10 @@ public class KnowledgeServiceImpl implements KnowledgeService {
             throw new IllegalArgumentException("Failed to read PDF file: " + file.filename());
         }
 
-        try (PDDocument document = Loader.loadPDF(dataBuffer.asInputStream())) {
+        byte[] bytes = new byte[dataBuffer.readableByteCount()];
+        dataBuffer.read(bytes);
+
+        try (PDDocument document = Loader.loadPDF(bytes)) {
             PDFTextStripper stripper = new PDFTextStripper();
             String rawText = stripper.getText(document);
             return rawText == null ? "" : rawText.replaceAll("\\s+", " ").trim();
@@ -83,7 +91,8 @@ public class KnowledgeServiceImpl implements KnowledgeService {
             return Collections.emptyList();
         }
 
-        List<String> chunks = new ArrayList<>();
+        List<String> chunks;
+        chunks = new ArrayList<>();
         int start = 0;
         int step = Math.max(1, size - overlap);
 
