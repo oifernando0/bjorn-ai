@@ -25,8 +25,8 @@ public class BjornServiceImpl implements BjornService {
     private static final String SYSTEM_PROMPT = """
 Você é Bjorn, um especialista técnico.
 - Quando receber contexto com trechos de materiais, responda APENAS com base nesses trechos.
-- Quando o prompt informar que não há contexto, responda de forma geral, mas deixe isso explícito na resposta.
-- Nunca invente nomes de arquivos nem referências: o backend adicionará as referências reais na resposta.
+- Quando o prompt informar que não há contexto, responda de forma geral, mas deixe isso explícito.
+- Nunca invente nomes de arquivos nem referências; o backend adicionará as referências reais na resposta.
 """;
 
     private static final String DEFAULT_SPECIALIST = "ELECTRICAL";
@@ -51,7 +51,7 @@ Você é Bjorn, um especialista técnico.
 
     private Mono<MessageResponse> generateAssistantResponse(Conversation conversation, String content, List<KnowledgeChunk> chunks) {
         List<KnowledgeChunk> safeChunks = chunks == null ? List.of() : chunks;
-        boolean hasContext = !safeChunks.isEmpty();
+        boolean hasContext = !safeChunks.isEmpty() && knowledgeService.getLastMaxScore() >= knowledgeService.getMinAcceptableScore();
         Set<String> fileNames = extractFileNames(safeChunks);
 
         String userPrompt;
@@ -64,21 +64,25 @@ Você é Bjorn, um especialista técnico.
                     Tarefa:
                     - Responda APENAS com base nos trechos acima.
                     - Use linguagem clara e didática em português.
-                    - Consolide as informações se vários trechos falarem do mesmo assunto.
+                    - Se possível, cubra:
+                      1. Definição do conceito perguntado;
+                      2. Para que ele é utilizado;
+                      3. Como ele se relaciona com um circuito ou aplicação prática (se houver material para isso).
                     - NÃO use conhecimento externo.
-                    - Ao final da resposta, haverá uma seção "Referências consultadas" adicionada pelo backend.
+                    - O backend adicionará a seção de referências de arquivos; não invente nomes de arquivos.
 
                     Pergunta do usuário:
                     %s
                     """.formatted(context, content);
         } else {
             userPrompt = """
-                    Os materiais de referência cadastrados (PDFs) não possuem trechos relevantes para responder à pergunta abaixo.
+                    Os materiais de referência cadastrados (PDFs) não possuem trechos suficientes ou relevantes para responder à pergunta abaixo.
 
                     Tarefa:
-                    - Explique de forma geral em português, usando seu conhecimento, mas deixe CLARO no início da resposta que não foi encontrada informação nos materiais de referência.
+                    - Explique de forma geral em português, usando seu conhecimento.
+                    - Logo no início da resposta, deixe CLARO que não foi encontrada informação nos materiais de referência.
                     - Exemplo de início: "Não encontrei informações sobre esse tema nos materiais cadastrados, mas, de forma geral, ..."
-                    - Não invente referências de arquivos, pois não há trechos mapeados.
+                    - NÃO invente nomes de arquivos ou referências de PDFs.
 
                     Pergunta do usuário:
                     %s

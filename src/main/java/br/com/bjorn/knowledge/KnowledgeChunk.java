@@ -22,6 +22,9 @@ public class KnowledgeChunk {
     @Column(length = 4000, nullable = false)
     private String text;
 
+    @Column(name = "embedding", columnDefinition = "vector(1536)")
+    private float[] embedding;
+
     public Long getId() {
         return id;
     }
@@ -60,5 +63,13 @@ public class KnowledgeChunk {
 
     public void setText(String text) {
         this.text = text;
+    }
+
+    public float[] getEmbedding() {
+        return embedding;
+    }
+
+    public void setEmbedding(float[] embedding) {
+        this.embedding = embedding;
     }
 }
