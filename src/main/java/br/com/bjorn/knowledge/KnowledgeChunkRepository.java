@@ -7,4 +7,5 @@ import java.util.List;
 public interface KnowledgeChunkRepository extends JpaRepository<KnowledgeChunk, Long> {
     List<KnowledgeChunk> findBySpecialistAndTextContainingIgnoreCase(String specialist, String text);
     List<KnowledgeChunk> findByTextContainingIgnoreCase(String text);
+    List<KnowledgeChunk> findBySpecialist(String specialist);
 }

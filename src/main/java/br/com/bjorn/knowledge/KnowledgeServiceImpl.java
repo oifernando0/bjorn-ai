@@ -3,7 +3,10 @@ package br.com.bjorn.knowledge;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -23,6 +26,8 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     private static final Logger logger = LoggerFactory.getLogger(KnowledgeServiceImpl.class);
     private static final int DEFAULT_CHUNK_SIZE = 800;
     private static final int DEFAULT_OVERLAP = 200;
+    private static final int MIN_TERM_LENGTH = 3;
+    private static final int MAX_RESULTS = 10;
 
     private final KnowledgeChunkRepository repository;
 
@@ -54,21 +59,22 @@ public class KnowledgeServiceImpl implements KnowledgeService {
 
     @Override
     public List<KnowledgeChunk> searchRelevantChunks(String specialist, String question) {
+        List<String> keywords = extractKeywords(question);
+        if (keywords.isEmpty()) {
+            return Collections.emptyList();
+        }
+
         String normalizedSpecialist = normalizeSpecialist(specialist);
-        if (normalizedSpecialist == null || normalizedSpecialist.isBlank()) {
-            return findMatchesAcrossSpecialists(question);
-        }
-        List<KnowledgeChunk> matches = repository.findBySpecialistAndTextContainingIgnoreCase(normalizedSpecialist, question);
-        // FUTURE: replace this simple LIKE query with an embedding/vector similarity search to improve relevance.
-        if (!matches.isEmpty()) {
-            return matches;
+        List<KnowledgeChunk> candidates = (normalizedSpecialist == null || normalizedSpecialist.isBlank())
+                ? repository.findAll()
+                : repository.findBySpecialist(normalizedSpecialist);
+
+        List<KnowledgeChunk> ranked = rankChunksByKeywords(candidates, keywords);
+        if (!ranked.isEmpty() || normalizedSpecialist == null || normalizedSpecialist.isBlank()) {
+            return ranked;
         }
 
-        return findMatchesAcrossSpecialists(question);
-    }
-
-    private List<KnowledgeChunk> findMatchesAcrossSpecialists(String question) {
-        return repository.findByTextContainingIgnoreCase(question);
+        return rankChunksByKeywords(repository.findAll(), keywords);
     }
 
     private String extractText(FilePart file) {
@@ -117,5 +123,64 @@ public class KnowledgeServiceImpl implements KnowledgeService {
 
     private String normalizeSpecialist(String specialist) {
         return specialist == null ? null : specialist.toUpperCase();
+    }
+
+    private List<String> extractKeywords(String question) {
+        if (question == null || question.isBlank()) {
+            return Collections.emptyList();
+        }
+
+        String normalized = question.toLowerCase().replaceAll("[\\p{Punct}]", " ");
+        String[] tokens = normalized.split("\\s+");
+
+        Set<String> terms = new LinkedHashSet<>();
+        for (String token : tokens) {
+            if (token.length() >= MIN_TERM_LENGTH) {
+                terms.add(token);
+            }
+        }
+
+        return new ArrayList<>(terms);
+    }
+
+    private List<KnowledgeChunk> rankChunksByKeywords(List<KnowledgeChunk> candidates, List<String> keywords) {
+        if (candidates == null || candidates.isEmpty() || keywords.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<ScoredChunk> scoredChunks = new ArrayList<>();
+        for (KnowledgeChunk chunk : candidates) {
+            int score = scoreChunk(chunk, keywords);
+            if (score > 0) {
+                scoredChunks.add(new ScoredChunk(chunk, score));
+            }
+        }
+
+        scoredChunks.sort(Comparator.comparingInt(ScoredChunk::score).reversed());
+
+        List<KnowledgeChunk> ranked = new ArrayList<>();
+        for (int i = 0; i < scoredChunks.size() && i < MAX_RESULTS; i++) {
+            ranked.add(scoredChunks.get(i).chunk());
+        }
+
+        return ranked;
+    }
+
+    private int scoreChunk(KnowledgeChunk chunk, List<String> keywords) {
+        if (chunk == null || chunk.getText() == null) {
+            return 0;
+        }
+
+        String chunkText = chunk.getText().toLowerCase();
+        int score = 0;
+        for (String term : keywords) {
+            if (chunkText.contains(term)) {
+                score++;
+            }
+        }
+        return score;
+    }
+
+    private record ScoredChunk(KnowledgeChunk chunk, int score) {
     }
 }
