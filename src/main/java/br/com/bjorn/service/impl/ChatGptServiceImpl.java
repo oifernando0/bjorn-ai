@@ -51,6 +51,39 @@ public class ChatGptServiceImpl implements ChatGptService {
                         .orElseGet(() -> Mono.error(new IllegalStateException("OpenAI response did not include a message."))));
     }
 
+    @Override
+    public Mono<float[]> generateEmbedding(String text) {
+        String apiKey = properties.getApiKey();
+        if (apiKey == null || apiKey.isBlank()) {
+            return Mono.error(new IllegalStateException(
+                    "OpenAI API key not configured. Set bjorn.openai.api-key or OPENAI_API_KEY."));
+        }
+
+        EmbeddingRequest request = new EmbeddingRequest(properties.getEmbeddingModel(), text);
+
+        return webClient.post()
+                .uri("/embeddings")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(request)
+                .retrieve()
+                .bodyToMono(EmbeddingResponse.class)
+                .flatMap(response -> {
+                    if (response == null || response.data == null || response.data.isEmpty()) {
+                        return Mono.error(new IllegalStateException("OpenAI embedding response is empty."));
+                    }
+                    List<Double> values = response.data.get(0).embedding;
+                    if (values == null || values.isEmpty()) {
+                        return Mono.error(new IllegalStateException("OpenAI embedding vector missing."));
+                    }
+                    float[] vector = new float[values.size()];
+                    for (int i = 0; i < values.size(); i++) {
+                        vector[i] = values.get(i).floatValue();
+                    }
+                    return Mono.just(vector);
+                });
+    }
+
     private record ChatCompletionRequest(String model, List<ChatMessage> messages, double temperature) { }
 
     private record ChatMessage(String role, String content) { }
@@ -70,4 +103,10 @@ public class ChatGptServiceImpl implements ChatGptService {
 
         private record Choice(ChatMessage message) { }
     }
+
+    private record EmbeddingRequest(String model, String input) { }
+
+    private record EmbeddingResponse(List<EmbeddingData> data) { }
+
+    private record EmbeddingData(List<Double> embedding) { }
 }

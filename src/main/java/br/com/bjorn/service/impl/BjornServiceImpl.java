@@ -11,6 +11,10 @@ import br.com.bjorn.service.MessageService;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+
 @Service
 public class BjornServiceImpl implements BjornService {
 
@@ -19,13 +23,11 @@ public class BjornServiceImpl implements BjornService {
     private final ChatGptService chatGptService;
 
     private static final String SYSTEM_PROMPT = """
-            Você é BJORN – Electrical Specialist.
-
-            Responda sempre em português.
-            Use APENAS as informações do contexto fornecido para responder.
-            Se não encontrar referência direta, explique que não encontrou a informação nos materiais disponíveis
-            e então ofereça a melhor orientação possível.
-            """;
+Você é Bjorn, um especialista técnico.
+- Quando receber contexto com trechos de materiais, responda APENAS com base nesses trechos.
+- Quando o prompt informar que não há contexto, responda de forma geral, mas deixe isso explícito.
+- Nunca invente nomes de arquivos nem referências; o backend adicionará as referências reais na resposta.
+""";
 
     private static final String DEFAULT_SPECIALIST = "ELECTRICAL";
     private static final String DEFAULT_KNOWLEDGE_BASE_NAME = "Base Global";
@@ -47,23 +49,94 @@ public class BjornServiceImpl implements BjornService {
                 .flatMap(chunks -> generateAssistantResponse(conversation, content, chunks));
     }
 
-    private Mono<MessageResponse> generateAssistantResponse(Conversation conversation, String content, java.util.List<KnowledgeChunk> chunks) {
-        String context = chunks.stream()
-                .map(KnowledgeChunk::getText)
-                .reduce((a, b) -> a + "\n\n" + b)
-                .orElse("Nenhum contexto relevante encontrado.");
+    private Mono<MessageResponse> generateAssistantResponse(Conversation conversation, String content, List<KnowledgeChunk> chunks) {
+        List<KnowledgeChunk> safeChunks = chunks == null ? List.of() : chunks;
+        boolean hasContext = !safeChunks.isEmpty() && knowledgeService.getLastMaxScore() >= knowledgeService.getMinAcceptableScore();
+        Set<String> fileNames = extractFileNames(safeChunks);
 
-        String userPrompt = """
-                Contexto extraído dos PDFs ou documentos indexados:
-                %s
+        String userPrompt;
+        if (hasContext) {
+            String context = buildContextWithReferences(safeChunks);
+            userPrompt = """
+                    Contexto extraído dos PDFs ou documentos indexados:
+                    %s
 
-                Pergunta do usuário:
-                %s
-                """.formatted(context, content);
+                    Tarefa:
+                    - Responda APENAS com base nos trechos acima.
+                    - Use linguagem clara e didática em português.
+                    - Se possível, cubra:
+                      1. Definição do conceito perguntado;
+                      2. Para que ele é utilizado;
+                      3. Como ele se relaciona com um circuito ou aplicação prática (se houver material para isso).
+                    - NÃO use conhecimento externo.
+                    - O backend adicionará a seção de referências de arquivos; não invente nomes de arquivos.
+
+                    Pergunta do usuário:
+                    %s
+                    """.formatted(context, content);
+        } else {
+            userPrompt = """
+                    Os materiais de referência cadastrados (PDFs) não possuem trechos suficientes ou relevantes para responder à pergunta abaixo.
+
+                    Tarefa:
+                    - Explique de forma geral em português, usando seu conhecimento.
+                    - Logo no início da resposta, deixe CLARO que não foi encontrada informação nos materiais de referência.
+                    - Exemplo de início: "Não encontrei informações sobre esse tema nos materiais cadastrados, mas, de forma geral, ..."
+                    - NÃO invente nomes de arquivos ou referências de PDFs.
+
+                    Pergunta do usuário:
+                    %s
+                    """.formatted(content);
+        }
 
         return chatGptService.generateAnswer(SYSTEM_PROMPT, userPrompt)
-                .flatMap(answer -> messageService.saveMessage(conversation, MessageRole.ASSISTANT, answer))
+                .map(answer -> hasContext ? appendReferences(answer, fileNames) : answer)
+                .flatMap(finalAnswer -> messageService.saveMessage(conversation, MessageRole.ASSISTANT, finalAnswer))
                 .map(msg -> new MessageResponse(msg.getId(), msg.getRole().name(), msg.getContent(), msg.getCreatedAt()));
+    }
+
+    private Set<String> extractFileNames(List<KnowledgeChunk> chunks) {
+        Set<String> fileNames = new LinkedHashSet<>();
+        for (KnowledgeChunk chunk : chunks) {
+            if (chunk != null) {
+                String name = chunk.getFileName();
+                if (name != null && !name.isBlank()) {
+                    fileNames.add(name);
+                }
+            }
+        }
+        return fileNames;
+    }
+
+    private String buildContextWithReferences(List<KnowledgeChunk> chunks) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Trechos relevantes dos materiais (cada trecho traz sua fonte):\n\n");
+        int idx = 1;
+        for (KnowledgeChunk c : chunks) {
+            if (c == null) {
+                continue;
+            }
+            sb.append("[").append(idx).append("] ")
+                    .append("Fonte: ").append(c.getFileName())
+                    .append(" | Chunk: ").append(c.getChunkIndex())
+                    .append("\n");
+            sb.append(c.getText()).append("\n\n");
+            idx++;
+        }
+        return sb.toString();
+    }
+
+    private String appendReferences(String answer, Set<String> fileNames) {
+        if (fileNames == null || fileNames.isEmpty()) {
+            return answer;
+        }
+
+        StringBuilder sb = new StringBuilder(answer);
+        sb.append("\n\nReferências consultadas:\n");
+        for (String name : fileNames) {
+            sb.append("- ").append(name).append("\n");
+        }
+        return sb.toString();
     }
 
     private String resolveSpecialist(Conversation conversation) {
