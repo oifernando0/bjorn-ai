@@ -53,26 +53,22 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     }
 
     @Override
-    public List<KnowledgeChunk> searchRelevantChunks(String specialist, String question, int topK) {
+    public List<KnowledgeChunk> searchRelevantChunks(String specialist, String question) {
         String normalizedSpecialist = normalizeSpecialist(specialist);
         if (normalizedSpecialist == null || normalizedSpecialist.isBlank()) {
-            return findTopMatchesAcrossSpecialists(question, topK);
+            return findMatchesAcrossSpecialists(question);
         }
-        List<KnowledgeChunk> matches = repository.findTop10BySpecialistAndTextContainingIgnoreCase(normalizedSpecialist, question);
+        List<KnowledgeChunk> matches = repository.findBySpecialistAndTextContainingIgnoreCase(normalizedSpecialist, question);
         // FUTURE: replace this simple LIKE query with an embedding/vector similarity search to improve relevance.
         if (!matches.isEmpty()) {
-            return matches.subList(0, Math.min(matches.size(), topK));
+            return matches;
         }
 
-        return findTopMatchesAcrossSpecialists(question, topK);
+        return findMatchesAcrossSpecialists(question);
     }
 
-    private List<KnowledgeChunk> findTopMatchesAcrossSpecialists(String question, int topK) {
-        List<KnowledgeChunk> fallbackMatches = repository.findTop10ByTextContainingIgnoreCase(question);
-        if (fallbackMatches.isEmpty()) {
-            return Collections.emptyList();
-        }
-        return fallbackMatches.subList(0, Math.min(fallbackMatches.size(), topK));
+    private List<KnowledgeChunk> findMatchesAcrossSpecialists(String question) {
+        return repository.findByTextContainingIgnoreCase(question);
     }
 
     private String extractText(FilePart file) {
