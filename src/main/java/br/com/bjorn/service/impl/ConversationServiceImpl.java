@@ -27,6 +27,8 @@ public class ConversationServiceImpl implements ConversationService {
 
     @Override
     public Conversation getConversation(Long id) {
-        return repository.findById(id).orElseThrow(() -> new IllegalArgumentException("Conversation not found"));
+        return repository.findWithKnowledgeBaseById(id)
+                .orElseGet(() -> repository.findById(id)
+                        .orElseThrow(() -> new IllegalArgumentException("Conversation not found")));
     }
 }
