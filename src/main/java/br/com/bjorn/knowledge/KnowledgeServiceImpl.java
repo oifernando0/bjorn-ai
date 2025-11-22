@@ -11,11 +11,6 @@ import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
 @Service
 @Transactional
 public class KnowledgeServiceImpl implements KnowledgeService {
