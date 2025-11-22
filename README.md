@@ -15,7 +15,31 @@ Use the paths below with the app running on `http://localhost:8080` (or the port
 - `POST /api/conversations/{conversationId}/documents` – faz upload de um arquivo relacionado à conversa. Multipart: parte `file` obrigatória e parte `sourceType` opcional (`OUTRO`, `MANUAL`, etc.).
 
 ### Base de conhecimento (PDF)
-- `POST /api/knowledge/{specialist}/docs` – faz upload de um ou mais PDFs para indexação. Multipart com `files` (lista de arquivos). O parâmetro de caminho `{specialist}` será normalizado para maiúsculas.
+- `POST /api/knowledge/{specialist}/docs` – faz upload de um ou mais PDFs para indexação. Envie como multipart **form-data** com uma parte `files` do tipo **File** para cada PDF (repita o campo se tiver vários). O parâmetro de caminho `{specialist}` será normalizado para maiúsculas.
+
+### Importação no Postman
+- Coleção pronta: `postman_collection.json` na raiz do repositório.
+- Variáveis: `baseUrl` (padrão `http://localhost:8080`), `conversationId` (preencha com o ID retornado ao criar a conversa) e `specialist` (por exemplo, `GERAL`).
+
+## Ordem recomendada para popular e usar a base
+1) **Subir os PDFs da base de conhecimento**
+   - Endpoint: `POST /api/knowledge/{specialist}/docs` (multipart)
+   - O `{specialist}` será convertido para maiúsculas (use algo como `GERAL`).
+   - Envie cada PDF em uma parte `files` do tipo **File** no form-data; se o campo tiver outro nome ou não for `File`, o backend retornará 400.
+   - Exemplo cURL: `curl -X POST "http://localhost:8080/api/knowledge/GERAL/docs" -F "files=@/caminho/arquivo1.pdf" -F "files=@/caminho/arquivo2.pdf"`
+2) **Criar a conversa ligada à base padrão**
+   - Endpoint: `POST /api/conversations`
+   - Corpo JSON mínimo: `{ "title": "Minha conversa" }` (o serviço ligará automaticamente à base padrão "Base Global").
+   - Se quiser apontar para outra base criada manualmente, inclua `knowledgeBaseId` no corpo.
+3) **Enviar mensagens na conversa**
+   - Endpoint: `POST /api/conversations/{conversationId}/messages`
+   - Corpo JSON: `{ "content": "Minha pergunta sobre os PDFs" }`.
+   - O `conversationId` vem da resposta da etapa 2.
+4) **(Opcional) Anexar documentos específicos da conversa**
+   - Endpoint: `POST /api/conversations/{conversationId}/documents` (multipart)
+   - Use a parte `file` (obrigatória) e, se quiser classificar a fonte, adicione `sourceType` (ex.: `MANUAL`).
+
+No Postman, basta importar a coleção e executar os requests na ordem acima, preenchendo as variáveis `conversationId` e `specialist` após cada passo.
 
 ## Docker
 
