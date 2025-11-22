@@ -21,14 +21,15 @@ public class ChatGptServiceImpl implements ChatGptService {
         this.properties = properties;
         this.webClient = builder
                 .baseUrl(properties.getBaseUrl())
-                .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + properties.getApiKey())
                 .build();
     }
 
     @Override
     public Mono<String> generateAnswer(String systemPrompt, String userPrompt) {
-        if (properties.getApiKey() == null || properties.getApiKey().isBlank()) {
-            return Mono.error(new IllegalStateException("OpenAI API key not configured. Set bjorn.openai.api-key or OPENAI_API_KEY."));
+        String apiKey = properties.getApiKey();
+        if (apiKey == null || apiKey.isBlank()) {
+            return Mono.error(new IllegalStateException(
+                    "OpenAI API key not configured. Set bjorn.openai.api-key or OPENAI_API_KEY."));
         }
 
         ChatCompletionRequest request = new ChatCompletionRequest(
@@ -39,6 +40,7 @@ public class ChatGptServiceImpl implements ChatGptService {
 
         return webClient.post()
                 .uri("/chat/completions")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
                 .retrieve()
