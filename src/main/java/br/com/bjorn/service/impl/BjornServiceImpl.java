@@ -27,6 +27,9 @@ public class BjornServiceImpl implements BjornService {
             e então ofereça a melhor orientação possível.
             """;
 
+    private static final String DEFAULT_SPECIALIST = "ELECTRICAL";
+    private static final String DEFAULT_KNOWLEDGE_BASE_NAME = "Base Global";
+
     public BjornServiceImpl(MessageService messageService, KnowledgeService knowledgeService, ChatGptService chatGptService) {
         this.messageService = messageService;
         this.knowledgeService = knowledgeService;
@@ -35,8 +38,12 @@ public class BjornServiceImpl implements BjornService {
 
     @Override
     public Mono<MessageResponse> handleUserMessage(Conversation conversation, String content) {
+        String specialist = resolveSpecialist(conversation);
         return messageService.saveMessage(conversation, MessageRole.USER, content)
-                .then(Mono.fromCallable(() -> knowledgeService.searchRelevantChunks(resolveSpecialist(conversation), content, 5)))
+                .then(Mono.fromCallable(() -> knowledgeService.searchRelevantChunks(specialist, content, 5)))
+                .map(chunks -> chunks.isEmpty() && !DEFAULT_SPECIALIST.equalsIgnoreCase(specialist)
+                        ? knowledgeService.searchRelevantChunks(DEFAULT_SPECIALIST, content, 5)
+                        : chunks)
                 .flatMap(chunks -> generateAssistantResponse(conversation, content, chunks));
     }
 
@@ -60,7 +67,16 @@ public class BjornServiceImpl implements BjornService {
     }
 
     private String resolveSpecialist(Conversation conversation) {
-        // TODO: derive specialist from conversation metadata/knowledge base when available.
-        return "ELECTRICAL";
+        if (conversation != null && conversation.getKnowledgeBase() != null) {
+            String kbName = conversation.getKnowledgeBase().getName();
+            if (kbName != null && !kbName.isBlank()) {
+                if (kbName.equalsIgnoreCase(DEFAULT_KNOWLEDGE_BASE_NAME)) {
+                    return DEFAULT_SPECIALIST;
+                }
+                return kbName.trim().toUpperCase();
+            }
+        }
+
+        return DEFAULT_SPECIALIST;
     }
 }
