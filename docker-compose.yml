@@ -1,38 +1,54 @@
 version: "3.8"
 
 services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: bjorn-ai-db-1
+    environment:
+      POSTGRES_DB: bjorn_db
+      POSTGRES_USER: bjorn
+      POSTGRES_PASSWORD: bjorn123
+    ports:
+      - "5433:5432"  # host:5433 -> container:5432
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bjorn -d bjorn_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   app:
     build: .
     image: bjorn-ai:latest
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+
+    # carrega as variáveis como OPENAI_API_KEY do seu .env
+    env_file:
+      - .env
+
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/bjorn
+      # aponta para o serviço "db" e para o banco bjorn_db
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/bjorn_db
       SPRING_DATASOURCE_USERNAME: bjorn
-      SPRING_DATASOURCE_PASSWORD: bjorn
+      SPRING_DATASOURCE_PASSWORD: bjorn123
+
+      # dentro do container
       BJORN_STORAGE_DIR: /data/storage
+
     ports:
       - "8080:8080"
+
+    # se quiser volume anônimo:
     volumes:
       - app-storage:/data/storage
-    restart: unless-stopped
+    # ou, se quiser usar o D:\RAG do host (como você fazia antes), troque por:
+    # volumes:
+    #   - "D:/RAG:/data/storage"
 
-  db:
-    image: postgres:16
-    environment:
-      POSTGRES_DB: bjorn
-      POSTGRES_USER: bjorn
-      POSTGRES_PASSWORD: bjorn
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    ports:
-      # Allow overriding the host port to avoid conflicts with a local PostgreSQL instance.
-      - "${POSTGRES_PORT:-5433}:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U bjorn"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    restart: unless-stopped
 
 volumes:
   pgdata:
