@@ -1,6 +1,7 @@
 package br.com.bjorn.knowledge;
 
 import jakarta.persistence.*;
+import br.com.bjorn.knowledge.converter.FloatArrayToVectorStringConverter;
 
 @Entity
 @Table(name = "knowledge_chunks")
@@ -22,7 +23,8 @@ public class KnowledgeChunk {
     @Column(length = 4000, nullable = false)
     private String text;
 
-    @Column(name = "embedding", columnDefinition = "vector(1536)")
+    @Convert(converter = FloatArrayToVectorStringConverter.class)
+    @Column(name = "embedding", columnDefinition = "text")
     private float[] embedding;
 
     public Long getId() {
