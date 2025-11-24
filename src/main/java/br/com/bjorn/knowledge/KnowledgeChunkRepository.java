@@ -15,7 +15,7 @@ public interface KnowledgeChunkRepository extends JpaRepository<KnowledgeChunk, 
             SELECT *
             FROM knowledge_chunks
             WHERE (:specialist IS NULL OR specialist = :specialist)
-            ORDER BY embedding <-> :queryEmbedding::vector
+            ORDER BY embedding::vector <-> :queryEmbedding::vector
             LIMIT :limit
             """, nativeQuery = true)
     List<KnowledgeChunk> findTopByEmbeddingSimilarity(@Param("specialist") String specialist,

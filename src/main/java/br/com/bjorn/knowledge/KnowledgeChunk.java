@@ -2,8 +2,6 @@ package br.com.bjorn.knowledge;
 
 import jakarta.persistence.*;
 import br.com.bjorn.knowledge.converter.FloatArrayToVectorStringConverter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "knowledge_chunks")
@@ -25,9 +23,8 @@ public class KnowledgeChunk {
     @Column(length = 4000, nullable = false)
     private String text;
 
-    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Convert(converter = FloatArrayToVectorStringConverter.class)
-    @Column(name = "embedding", columnDefinition = "vector(1536)")
+    @Column(name = "embedding", columnDefinition = "text")
     private float[] embedding;
 
     public Long getId() {

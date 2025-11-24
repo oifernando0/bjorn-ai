@@ -2,8 +2,6 @@ package br.com.bjorn.knowledge.converter;
 
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
-import java.util.Arrays;
-import java.util.stream.Collectors;
 
 @Converter(autoApply = false)
 public class FloatArrayToVectorStringConverter implements AttributeConverter<float[], String> {
@@ -13,9 +11,16 @@ public class FloatArrayToVectorStringConverter implements AttributeConverter<flo
         if (attribute == null) {
             return null;
         }
-        return Arrays.stream(attribute)
-                .mapToObj(Float::toString)
-                .collect(Collectors.joining(",", "[", "]"));
+        StringBuilder builder = new StringBuilder(attribute.length * 8 + 2);
+        builder.append('[');
+        for (int i = 0; i < attribute.length; i++) {
+            if (i > 0) {
+                builder.append(',');
+            }
+            builder.append(Float.toString(attribute[i]));
+        }
+        builder.append(']');
+        return builder.toString();
     }
 
     @Override
