@@ -4,6 +4,7 @@ import br.com.bjorn.entity.Document;
 import br.com.bjorn.entity.KnowledgeBase;
 import br.com.bjorn.knowledge.KnowledgeChunk;
 import br.com.bjorn.knowledge.KnowledgeChunkRepository;
+import br.com.bjorn.knowledge.converter.FloatArrayToVectorStringConverter;
 import br.com.bjorn.rag.RagService;
 import br.com.bjorn.service.ChatGptService;
 import java.util.Collections;
@@ -38,7 +39,8 @@ public class RagServiceImpl implements RagService {
         }
 
         int limit = Math.max(maxResults, SEMANTIC_SHORTLIST);
-        List<KnowledgeChunk> candidates = repository.findTopByEmbeddingSimilarity(specialist, queryEmbedding, limit);
+        String queryEmbeddingVector = embeddingConverter.convertToDatabaseColumn(queryEmbedding);
+        List<KnowledgeChunk> candidates = repository.findTopByEmbeddingSimilarity(specialist, queryEmbeddingVector, limit);
         // TODO: consider applying a semantic similarity threshold once distance values are available from the query
         return candidates == null ? Collections.emptyList() : candidates;
     }
@@ -53,4 +55,6 @@ public class RagServiceImpl implements RagService {
             return null;
         }
     }
+
+    private final FloatArrayToVectorStringConverter embeddingConverter = new FloatArrayToVectorStringConverter();
 }
