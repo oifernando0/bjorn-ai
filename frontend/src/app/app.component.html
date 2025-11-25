@@ -1,0 +1,79 @@
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="sidebar__header">
+      <div>
+        <p class="eyebrow">Histórico</p>
+        <h2>Conversa</h2>
+      </div>
+      <div class="status" [class.status--on]="conversation">
+        <span class="status__dot"></span>
+        <span>{{ conversation ? 'Conectado' : 'Offline' }}</span>
+      </div>
+    </div>
+    <div class="sidebar__body" *ngIf="hasMessages; else emptyHistory">
+      <div
+        class="sidebar__message"
+        *ngFor="let message of messages; trackBy: trackMessage"
+        [class.sidebar__message--assistant]="message.role === 'ASSISTANT'"
+      >
+        <div class="sidebar__role">{{ message.role === 'USER' ? 'Você' : 'Agente' }}</div>
+        <div class="sidebar__preview">{{ message.content | slice : 0 : 80 }}</div>
+      </div>
+    </div>
+    <ng-template #emptyHistory>
+      <div class="sidebar__empty">
+        <p>A conversa aparecerá aqui conforme você troca mensagens.</p>
+      </div>
+    </ng-template>
+  </aside>
+
+  <main class="chat">
+    <header class="chat__header">
+      <div>
+        <p class="eyebrow">Bjorn AI Agent</p>
+        <h1>Assistente de Engenharia Elétrica</h1>
+        <p class="subtitle">Converse com o agente e acompanhe as respostas em tempo real.</p>
+      </div>
+      <div class="pill">{{ conversation?.title || 'Iniciando conversa...' }}</div>
+    </header>
+
+    <section class="chat__window" [class.chat__window--loading]="loading">
+      <div class="message" *ngFor="let message of messages; trackBy: trackMessage" [class.message--agent]="message.role === 'ASSISTANT'">
+        <div class="avatar" [class.avatar--agent]="message.role === 'ASSISTANT'">
+          {{ message.role === 'USER' ? 'Você' : 'AI' }}
+        </div>
+        <div class="bubble">
+          <div class="bubble__text">{{ message.content }}</div>
+          <div class="bubble__meta">
+            <span>{{ message.role === 'USER' ? 'Você' : 'Agente' }}</span>
+            <span>•</span>
+            <span>{{ message.createdAt | date : 'shortTime' }}</span>
+            <span *ngIf="message.streaming" class="typing">digitando...</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="empty" *ngIf="!hasMessages && !loading">
+        <p>Envie a primeira mensagem para começar a sessão.</p>
+      </div>
+    </section>
+
+    <footer class="composer">
+      <form (ngSubmit)="sendMessage()">
+        <div class="composer__field">
+          <textarea
+            [(ngModel)]="currentInput"
+            name="message"
+            placeholder="Pergunte algo sobre os PDFs elétricos..."
+            rows="3"
+          ></textarea>
+          <div class="composer__actions">
+            <button type="submit" [disabled]="loading || !currentInput.trim()">Enviar</button>
+            <span class="loading" *ngIf="loading">Aguardando resposta...</span>
+          </div>
+        </div>
+        <p class="error" *ngIf="errorMessage">{{ errorMessage }}</p>
+      </form>
+    </footer>
+  </main>
+</div>
