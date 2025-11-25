@@ -11,7 +11,7 @@ import { ChatService } from './services/chat.service';
   standalone: true,
   imports: [CommonModule, FormsModule, DatePipe],
   templateUrl: './app.component.html',
-  styleUrl: './app.component.scss'
+  styleUrls: ['./app.component.scss']
 })
 export class AppComponent implements OnInit, OnDestroy {
   conversation?: Conversation;
