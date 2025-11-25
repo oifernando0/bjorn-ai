@@ -5,6 +5,8 @@ import br.com.bjorn.entity.Message;
 import br.com.bjorn.entity.MessageRole;
 import br.com.bjorn.repository.MessageRepository;
 import br.com.bjorn.service.MessageService;
+import java.util.Comparator;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Flux;
@@ -34,5 +36,11 @@ public class MessageServiceImpl implements MessageService {
     @Override
     public Flux<Message> getMessages(Conversation conversation) {
         return Flux.fromIterable(repository.findByConversationOrderByCreatedAtAsc(conversation));
+    }
+
+    @Override
+    public Flux<Message> getRecentMessages(Conversation conversation, int limit) {
+        return Flux.fromIterable(repository.findByConversationOrderByCreatedAtDesc(conversation, PageRequest.of(0, limit)))
+                .sort(Comparator.comparing(Message::getCreatedAt));
     }
 }

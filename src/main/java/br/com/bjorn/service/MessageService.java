@@ -9,4 +9,5 @@ import reactor.core.publisher.Mono;
 public interface MessageService {
     Mono<Message> saveMessage(Conversation conversation, MessageRole role, String content);
     Flux<Message> getMessages(Conversation conversation);
+    Flux<Message> getRecentMessages(Conversation conversation, int limit);
 }

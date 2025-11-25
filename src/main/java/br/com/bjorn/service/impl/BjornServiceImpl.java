@@ -2,6 +2,7 @@ package br.com.bjorn.service.impl;
 
 import br.com.bjorn.dto.MessageResponse;
 import br.com.bjorn.entity.Conversation;
+import br.com.bjorn.entity.Message;
 import br.com.bjorn.entity.MessageRole;
 import br.com.bjorn.knowledge.KnowledgeChunk;
 import br.com.bjorn.knowledge.KnowledgeService;
@@ -31,6 +32,7 @@ Você é Bjorn, um especialista técnico.
 
     private static final String DEFAULT_SPECIALIST = "ELECTRICAL";
     private static final String DEFAULT_KNOWLEDGE_BASE_NAME = "Base Global";
+    private static final int MAX_RECENT_MESSAGES = 6;
 
     public BjornServiceImpl(MessageService messageService, KnowledgeService knowledgeService, ChatGptService chatGptService) {
         this.messageService = messageService;
@@ -41,23 +43,30 @@ Você é Bjorn, um especialista técnico.
     @Override
     public Mono<MessageResponse> handleUserMessage(Conversation conversation, String content) {
         String specialist = resolveSpecialist(conversation);
-        return messageService.saveMessage(conversation, MessageRole.USER, content)
-                .then(Mono.fromCallable(() -> knowledgeService.searchRelevantChunks(specialist, content)))
+        Mono<List<KnowledgeChunk>> knowledgeMono = Mono.fromCallable(() -> knowledgeService.searchRelevantChunks(specialist, content))
                 .map(chunks -> chunks.isEmpty() && !DEFAULT_SPECIALIST.equalsIgnoreCase(specialist)
                         ? knowledgeService.searchRelevantChunks(DEFAULT_SPECIALIST, content)
-                        : chunks)
-                .flatMap(chunks -> generateAssistantResponse(conversation, content, chunks));
+                        : chunks);
+
+        Mono<List<Message>> recentMessagesMono = messageService.getRecentMessages(conversation, MAX_RECENT_MESSAGES).collectList();
+
+        return messageService.saveMessage(conversation, MessageRole.USER, content)
+                .then(Mono.zip(knowledgeMono, recentMessagesMono))
+                .flatMap(tuple -> generateAssistantResponse(conversation, content, tuple.getT1(), tuple.getT2()));
     }
 
-    private Mono<MessageResponse> generateAssistantResponse(Conversation conversation, String content, List<KnowledgeChunk> chunks) {
+    private Mono<MessageResponse> generateAssistantResponse(Conversation conversation, String content, List<KnowledgeChunk> chunks, List<Message> recentMessages) {
         List<KnowledgeChunk> safeChunks = chunks == null ? List.of() : chunks;
         boolean hasContext = !safeChunks.isEmpty() && knowledgeService.getLastMaxScore() >= knowledgeService.getMinAcceptableScore();
         Set<String> fileNames = extractFileNames(safeChunks);
+        String conversationContext = buildRecentConversationPrompt(recentMessages);
 
         String userPrompt;
         if (hasContext) {
             String context = buildContextWithReferences(safeChunks);
             userPrompt = """
+                    %s
+
                     Contexto extraído dos PDFs ou documentos indexados:
                     %s
 
@@ -73,9 +82,11 @@ Você é Bjorn, um especialista técnico.
 
                     Pergunta do usuário:
                     %s
-                    """.formatted(context, content);
+                    """.formatted(conversationContext, context, content);
         } else {
             userPrompt = """
+                    %s
+
                     Os materiais de referência cadastrados (PDFs) não possuem trechos suficientes ou relevantes para responder à pergunta abaixo.
 
                     Tarefa:
@@ -86,7 +97,7 @@ Você é Bjorn, um especialista técnico.
 
                     Pergunta do usuário:
                     %s
-                    """.formatted(content);
+                    """.formatted(conversationContext, content);
         }
 
         return chatGptService.generateAnswer(SYSTEM_PROMPT, userPrompt)
@@ -137,6 +148,23 @@ Você é Bjorn, um especialista técnico.
             sb.append("- ").append(name).append("\n");
         }
         return sb.toString();
+    }
+
+    private String buildRecentConversationPrompt(List<Message> recentMessages) {
+        if (recentMessages == null || recentMessages.isEmpty()) {
+            return "Conversa recente: apenas a mensagem atual do usuário.";
+        }
+
+        StringBuilder sb = new StringBuilder("Conversa recente (do mais antigo para o mais recente):\n");
+        for (Message message : recentMessages) {
+            if (message == null || message.getContent() == null) {
+                continue;
+            }
+            MessageRole role = message.getRole();
+            String roleLabel = role == MessageRole.ASSISTANT ? "Assistente" : "Usuário";
+            sb.append(roleLabel).append(": ").append(message.getContent()).append("\n\n");
+        }
+        return sb.toString().trim();
     }
 
     private String resolveSpecialist(Conversation conversation) {
