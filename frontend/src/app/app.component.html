@@ -5,9 +5,12 @@
         <p class="eyebrow">Histórico</p>
         <h2>Conversa</h2>
       </div>
-      <div class="status" [class.status--on]="conversation">
-        <span class="status__dot"></span>
-        <span>{{ conversation ? 'Conectado' : 'Offline' }}</span>
+      <div class="sidebar__actions">
+        <button type="button" class="ghost" (click)="startNewConversation()">+ Nova</button>
+        <div class="status" [class.status--on]="conversation">
+          <span class="status__dot"></span>
+          <span>{{ conversation ? 'Conectado' : 'Offline' }}</span>
+        </div>
       </div>
     </div>
     <div class="sidebar__body" *ngIf="hasMessages; else emptyHistory">
@@ -59,23 +62,23 @@
     </section>
 
     <footer class="composer">
-      <form (ngSubmit)="sendMessage()">
-        <div class="composer__field">
+      <form class="composer__form" (ngSubmit)="sendMessage()">
+        <div class="composer__input">
           <textarea
             [(ngModel)]="currentInput"
             name="message"
-            placeholder="Pergunte algo sobre os PDFs elétricos..."
-            rows="3"
+            placeholder="Envie uma mensagem para o GPT..."
+            rows="2"
           ></textarea>
-          <div class="composer__actions">
-            <button type="submit" [disabled]="loading || !currentInput.trim()" aria-label="Enviar mensagem">
-              <span>Enviar</span>
-              <span class="arrow">➜</span>
-            </button>
-            <span class="loading" *ngIf="loading">Aguardando resposta...</span>
-          </div>
+          <button type="submit" [disabled]="loading || !currentInput.trim()" aria-label="Enviar mensagem">
+            <span class="sr-only">Enviar</span>
+            <span class="arrow">➤</span>
+          </button>
         </div>
-        <p class="error" *ngIf="errorMessage">{{ errorMessage }}</p>
+        <div class="composer__footer">
+          <span class="loading" *ngIf="loading">Aguardando resposta...</span>
+          <p class="error" *ngIf="errorMessage">{{ errorMessage }}</p>
+        </div>
       </form>
     </footer>
   </main>

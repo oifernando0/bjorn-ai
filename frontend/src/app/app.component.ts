@@ -35,6 +35,15 @@ export class AppComponent implements OnInit, OnDestroy {
     return this.messages.length > 0;
   }
 
+  startNewConversation(): void {
+    this.streamSub?.unsubscribe();
+    this.messages = [];
+    this.conversation = undefined;
+    this.loading = false;
+    this.errorMessage = '';
+    this.startConversation();
+  }
+
   private startConversation(): void {
     const title = `Sessão ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
     this.chatService.createConversation(title).subscribe({
