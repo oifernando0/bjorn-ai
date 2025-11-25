@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bjorn AI - Perguntas</title>
+    <style>
+        :root {
+            color-scheme: light dark;
+            font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            background: radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.08), transparent 25%),
+                radial-gradient(circle at 80% 30%, rgba(236, 72, 153, 0.08), transparent 22%),
+                radial-gradient(circle at 50% 80%, rgba(16, 185, 129, 0.08), transparent 25%),
+                linear-gradient(135deg, #0f172a, #111827 55%, #0b1021);
+            color: #e5e7eb;
+            padding: 24px;
+        }
+
+        .card {
+            width: min(720px, 100%);
+            background: rgba(15, 23, 42, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 18px;
+            box-shadow: 0 20px 80px rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(12px);
+            padding: 28px;
+        }
+
+        h1 {
+            margin-top: 0;
+            font-size: 1.6rem;
+            letter-spacing: -0.02em;
+            color: #f9fafb;
+        }
+
+        .subtitle {
+            margin: 4px 0 20px;
+            color: #cbd5e1;
+            font-size: 0.95rem;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 180px;
+            padding: 14px 16px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(15, 23, 42, 0.55);
+            color: #f8fafc;
+            font-size: 1rem;
+            resize: vertical;
+            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        textarea:focus {
+            border-color: rgba(99, 102, 241, 0.8);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+        }
+
+        button {
+            margin-top: 16px;
+            padding: 12px 18px;
+            border-radius: 12px;
+            border: none;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.2s ease;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 12px 40px rgba(99, 102, 241, 0.25);
+        }
+
+        .status {
+            margin-top: 14px;
+            font-size: 0.95rem;
+            color: #cbd5e1;
+            line-height: 1.5;
+        }
+
+        .status strong {
+            color: #a5b4fc;
+        }
+
+        .response {
+            margin-top: 14px;
+            padding: 14px 16px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Bjorn AI</h1>
+        <p class="subtitle">Envie sua pergunta e veremos a resposta do backend.</p>
+
+        <label for="question" class="sr-only">Pergunta</label>
+        <textarea id="question" placeholder="Escreva sua pergunta aqui..."></textarea>
+
+        <button id="sendBtn" type="button">Enviar pergunta</button>
+
+        <div id="status" class="status"></div>
+        <div id="response" class="response" hidden></div>
+    </div>
+
+    <script>
+        const questionInput = document.getElementById('question');
+        const sendBtn = document.getElementById('sendBtn');
+        const statusEl = document.getElementById('status');
+        const responseEl = document.getElementById('response');
+
+        let conversationId = null;
+
+        async function ensureConversation() {
+            if (conversationId) return conversationId;
+
+            statusEl.textContent = 'Criando conversa...';
+            const res = await fetch('/api/conversations', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: 'Conversa via frontend' })
+            });
+
+            if (!res.ok) {
+                throw new Error('Não foi possível criar a conversa.');
+            }
+
+            const data = await res.json();
+            conversationId = data.id;
+            statusEl.textContent = `Conversa pronta (ID ${conversationId}).`;
+            return conversationId;
+        }
+
+        async function sendQuestion() {
+            const content = questionInput.value.trim();
+            if (!content) {
+                statusEl.textContent = 'Digite uma pergunta antes de enviar.';
+                return;
+            }
+
+            sendBtn.disabled = true;
+            responseEl.hidden = true;
+            statusEl.textContent = 'Enviando pergunta...';
+
+            try {
+                const convId = await ensureConversation();
+                const res = await fetch(`/api/conversations/${convId}/messages`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content })
+                });
+
+                if (!res.ok) {
+                    const body = await res.text();
+                    throw new Error(body || 'Erro ao enviar a pergunta.');
+                }
+
+                const data = await res.json();
+                responseEl.textContent = data.content || JSON.stringify(data, null, 2);
+                responseEl.hidden = false;
+                statusEl.textContent = 'Resposta recebida!';
+            } catch (error) {
+                statusEl.textContent = error.message;
+                responseEl.textContent = '';
+                responseEl.hidden = true;
+            } finally {
+                sendBtn.disabled = false;
+            }
+        }
+
+        sendBtn.addEventListener('click', sendQuestion);
+    </script>
+</body>
+</html>
