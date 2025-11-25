@@ -68,7 +68,10 @@
             rows="3"
           ></textarea>
           <div class="composer__actions">
-            <button type="submit" [disabled]="loading || !currentInput.trim()">Enviar</button>
+            <button type="submit" [disabled]="loading || !currentInput.trim()" aria-label="Enviar mensagem">
+              <span>Enviar</span>
+              <span class="arrow">➜</span>
+            </button>
             <span class="loading" *ngIf="loading">Aguardando resposta...</span>
           </div>
         </div>
