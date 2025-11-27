@@ -96,3 +96,5 @@ O volume pgdata está vazio;
 O Postgres roda automaticamente o 01_bjorn_db_init.sql;
 
 O banco bjorn_db nasce com os mesmos dados do seu dump.
+
+https://drive.google.com/drive/folders/1fFo5JW-ZmcTyb9uI2qy1ekPcP9nIwCR-?hl=pt-br
