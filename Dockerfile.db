@@ -1,0 +1,4 @@
+FROM pgvector/pgvector:pg16
+
+# Executado automaticamente na primeira inicialização
+COPY bjorn_db_init.sql /docker-entrypoint-initdb.d/01_bjorn_db_init.sql

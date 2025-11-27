@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   db:
-    image: pgvector/pgvector:pg16
+    image: bjorn-ai-db:1.0          # <<-- SÓ MUDEI ESSA LINHA
     container_name: bjorn-ai-db-1
     environment:
       POSTGRES_DB: bjorn_db

@@ -56,3 +56,43 @@ POSTGRES_PORT=55432 docker-compose up --build
 ```
 
 By default the database is published on `5433` and the application on `8080`.
+
+
+Mantendo dados do banco:
+
+Clonar o projeto
+
+git clone <seu-repo>
+cd bjorn-ai   # pasta do projeto
+
+
+Buildar a imagem do banco com o init (usando o bjorn_db_init.sql que veio junto):
+
+docker build -f Dockerfile.db -t bjorn-ai-db:1.0 .
+
+
+(Opcional) Buildar o backend, se não for baixar imagem pronta:
+
+docker build -t bjorn-ai:latest .
+
+
+Subir tudo:
+
+Se for a primeira vez (ou você quer garantir que o seed rode):
+
+docker compose down -v   # (só se já existia algo antes)
+docker compose up -d
+
+
+Se for máquina nova (sem nada ainda):
+
+docker compose up -d
+
+
+Na primeira inicialização:
+
+O volume pgdata está vazio;
+
+O Postgres roda automaticamente o 01_bjorn_db_init.sql;
+
+O banco bjorn_db nasce com os mesmos dados do seu dump.
