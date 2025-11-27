@@ -8,3 +8,4 @@
 .idea/
 .vscode/
 .env
+bjorn_db_init.sql
