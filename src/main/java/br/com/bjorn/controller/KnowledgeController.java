@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.http.codec.multipart.FilePart;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
 
@@ -23,13 +25,14 @@ public class KnowledgeController {
     }
 
     @PostMapping(value = "/{specialist}/docs", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<Void> uploadDocs(@PathVariable String specialist, @RequestPart("files") List<FilePart> files) {
+    public Mono<ResponseEntity<Void>> uploadDocs(@PathVariable String specialist, @RequestPart("files") List<FilePart> files) {
         if (files == null || files.isEmpty()) {
-            return ResponseEntity.badRequest().build();
+            return Mono.just(ResponseEntity.badRequest().build());
         }
 
         String normalizedSpecialist = specialist == null ? null : specialist.toUpperCase();
-        files.forEach(file -> knowledgeService.indexPdf(file, normalizedSpecialist));
-        return ResponseEntity.noContent().build();
+        return Flux.fromIterable(files)
+                .flatMap(file -> knowledgeService.indexPdf(file, normalizedSpecialist))
+                .then(Mono.just(ResponseEntity.noContent().build()));
     }
 }

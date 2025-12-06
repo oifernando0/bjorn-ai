@@ -20,6 +20,8 @@ import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 @Service
 @Transactional
@@ -56,26 +58,31 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     }
 
     @Override
-    public void indexPdf(FilePart file, String specialist) {
+    public Mono<Void> indexPdf(FilePart file, String specialist) {
         String normalizedSpecialist = normalizeSpecialist(specialist);
         if (normalizedSpecialist == null || normalizedSpecialist.isBlank()) {
-            throw new IllegalArgumentException("Specialist is required");
+            return Mono.error(new IllegalArgumentException("Specialist is required"));
         }
         String fileName = file.filename();
-        String text = extractText(file);
-        List<String> chunks = chunk(text, DEFAULT_CHUNK_SIZE, DEFAULT_OVERLAP);
 
-        for (int i = 0; i < chunks.size(); i++) {
-            KnowledgeChunk chunk = new KnowledgeChunk();
-            chunk.setSpecialist(normalizedSpecialist);
-            chunk.setFileName(fileName);
-            chunk.setChunkIndex(i);
-            chunk.setText(chunks.get(i));
-            chunk.setEmbedding(generateEmbeddingSafe(chunks.get(i)));
-            repository.save(chunk);
-        }
-
-        logger.info("Indexed {} chunks for specialist {} from file {}", chunks.size(), normalizedSpecialist, fileName);
+        return DataBufferUtils.join(file.content())
+                .publishOn(Schedulers.boundedElastic())
+                .flatMap(dataBuffer -> Mono.fromCallable(() -> extractText(dataBuffer, fileName)))
+                .map(text -> {
+                    List<String> chunks = chunk(text, DEFAULT_CHUNK_SIZE, DEFAULT_OVERLAP);
+                    for (int i = 0; i < chunks.size(); i++) {
+                        KnowledgeChunk chunk = new KnowledgeChunk();
+                        chunk.setSpecialist(normalizedSpecialist);
+                        chunk.setFileName(fileName);
+                        chunk.setChunkIndex(i);
+                        chunk.setText(chunks.get(i));
+                        chunk.setEmbedding(generateEmbeddingSafe(chunks.get(i)));
+                        repository.save(chunk);
+                    }
+                    return chunks.size();
+                })
+                .doOnNext(count -> logger.info("Indexed {} chunks for specialist {} from file {}", count, normalizedSpecialist, fileName))
+                .then();
     }
 
     @Override
@@ -153,10 +160,9 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         return ranked;
     }
 
-    private String extractText(FilePart file) {
-        DataBuffer dataBuffer = DataBufferUtils.join(file.content()).block();
+    private String extractText(DataBuffer dataBuffer, String fileName) {
         if (dataBuffer == null) {
-            throw new IllegalArgumentException("Failed to read PDF file: " + file.filename());
+            throw new IllegalArgumentException("Failed to read PDF file: " + fileName);
         }
 
         byte[] bytes = new byte[dataBuffer.readableByteCount()];
@@ -167,7 +173,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
             String rawText = stripper.getText(document);
             return rawText == null ? "" : rawText.replaceAll("\\s+", " ").trim();
         } catch (IOException e) {
-            throw new IllegalArgumentException("Failed to read PDF file: " + file.filename(), e);
+            throw new IllegalArgumentException("Failed to read PDF file: " + fileName, e);
         } finally {
             DataBufferUtils.release(dataBuffer);
         }
