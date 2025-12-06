@@ -10,4 +10,5 @@ public interface KnowledgeService {
     List<KnowledgeChunk> searchRelevantChunks(String specialist, String question);
     int getLastMaxScore();
     int getMinAcceptableScore();
+    List<String> listDocs(String specialist);
 }
