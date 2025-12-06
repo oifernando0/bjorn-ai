@@ -65,6 +65,8 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         }
         String fileName = file.filename();
 
+        logger.info("Starting indexing for file {} and specialist {}", fileName, normalizedSpecialist);
+
         return DataBufferUtils.join(file.content())
                 .publishOn(Schedulers.boundedElastic())
                 .flatMap(dataBuffer -> Mono.fromCallable(() -> extractText(dataBuffer, fileName)))
@@ -82,6 +84,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
                     return chunks.size();
                 })
                 .doOnNext(count -> logger.info("Indexed {} chunks for specialist {} from file {}", count, normalizedSpecialist, fileName))
+                .doOnTerminate(() -> logger.info("Finished indexing for file {} and specialist {}", fileName, normalizedSpecialist))
                 .then();
     }
 
