@@ -118,6 +118,16 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         return MIN_ACCEPTABLE_SCORE;
     }
 
+    @Override
+    public List<String> listDocs(String specialist) {
+        String normalizedSpecialist = normalizeSpecialist(specialist);
+        if (normalizedSpecialist == null || normalizedSpecialist.isBlank()) {
+            return Collections.emptyList();
+        }
+
+        return repository.findDistinctFileNamesBySpecialist(normalizedSpecialist);
+    }
+
     private List<KnowledgeChunk> retrieveCandidates(String specialist, String question) {
         List<KnowledgeChunk> semantic = ragService.retrieveRelevantChunks(specialist, question, SEMANTIC_CANDIDATES);
         if (semantic != null && !semantic.isEmpty()) {

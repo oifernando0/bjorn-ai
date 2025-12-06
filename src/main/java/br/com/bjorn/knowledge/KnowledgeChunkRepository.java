@@ -11,6 +11,14 @@ public interface KnowledgeChunkRepository extends JpaRepository<KnowledgeChunk, 
     List<KnowledgeChunk> findByTextContainingIgnoreCase(String text);
     List<KnowledgeChunk> findBySpecialist(String specialist);
 
+    @Query("""
+            SELECT DISTINCT k.fileName
+            FROM KnowledgeChunk k
+            WHERE (:specialist IS NULL OR k.specialist = :specialist)
+            ORDER BY k.fileName
+            """)
+    List<String> findDistinctFileNamesBySpecialist(@Param("specialist") String specialist);
+
     @Query(value = """
             SELECT *
             FROM knowledge_chunks
