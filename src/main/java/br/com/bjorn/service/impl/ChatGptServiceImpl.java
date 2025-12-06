@@ -5,6 +5,8 @@ import br.com.bjorn.service.ChatGptService;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -13,6 +15,8 @@ import reactor.core.publisher.Mono;
 
 @Service
 public class ChatGptServiceImpl implements ChatGptService {
+
+    private static final Logger logger = LoggerFactory.getLogger(ChatGptServiceImpl.class);
 
     private final OpenAiProperties properties;
     private final WebClient webClient;
@@ -59,6 +63,9 @@ public class ChatGptServiceImpl implements ChatGptService {
                     "OpenAI API key not configured. Set bjorn.openai.api-key or OPENAI_API_KEY."));
         }
 
+        logger.info("Generating embedding using model '{}' (inputLength={})", properties.getEmbeddingModel(),
+                text == null ? 0 : text.length());
+
         EmbeddingRequest request = new EmbeddingRequest(properties.getEmbeddingModel(), text);
 
         return webClient.post()
@@ -80,6 +87,7 @@ public class ChatGptServiceImpl implements ChatGptService {
                     for (int i = 0; i < values.size(); i++) {
                         vector[i] = values.get(i).floatValue();
                     }
+                    logger.info("Embedding generated successfully (dimensions={})", vector.length);
                     return Mono.just(vector);
                 });
     }
